@@ -25,3 +25,4 @@ tauri-plugin-notification = "2.2.1"
 reqwest = { version = "0.12", features = ["json"] }
 keyring = { version = "3.0.0", features = ["apple-native"] }
 tokio = { version = "1.0", features = ["rt", "time", "sync"] }
+image = { version = "0.24", features = ["png"] }

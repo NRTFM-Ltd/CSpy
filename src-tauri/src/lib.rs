@@ -1,5 +1,6 @@
 mod keychain;
 mod usage;
+mod icon;
 
 use std::sync::Arc;
 use tauri::{
@@ -144,8 +145,8 @@ pub fn run() {
             // Build system tray
             TrayIconBuilder::with_id("cspy-tray")
                 .tooltip("CSpy — loading…")
-                .icon(app.default_window_icon().cloned().unwrap())
-                .icon_as_template(true)
+                .icon(icon::generate_usage_icon(0.0))
+                .icon_as_template(false)
                 .on_tray_icon_event(move |tray, event| {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,

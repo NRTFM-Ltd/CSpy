@@ -89,6 +89,14 @@ fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
 
             match usage::fetch_usage(&token).await {
                 Ok(data) => {
+                    // Regenerate tray icon based on utilisation
+                    if let Some(bucket) = &data.five_hour {
+                        let new_icon = icon::generate_usage_icon(bucket.utilisation);
+                        if let Some(tray) = app_handle.tray_by_id("cspy-tray") {
+                            let _ = tray.set_icon(Some(new_icon));
+                        }
+                    }
+
                     update_tray_tooltip(&app_handle, &data);
                     *state.cached.write().await = Some(data.clone());
                     let _ = app_handle.emit("usage-updated", &data);
@@ -172,6 +180,14 @@ pub fn run() {
                 match ensure_token(&s).await {
                     Ok(token) => match usage::fetch_usage(&token).await {
                         Ok(data) => {
+                            // Regenerate tray icon
+                            if let Some(bucket) = &data.five_hour {
+                                let new_icon = icon::generate_usage_icon(bucket.utilisation);
+                                if let Some(tray) = h.tray_by_id("cspy-tray") {
+                                    let _ = tray.set_icon(Some(new_icon));
+                                }
+                            }
+
                             update_tray_tooltip(&h, &data);
                             *s.cached.write().await = Some(data.clone());
                             let _ = h.emit("usage-updated", &data);

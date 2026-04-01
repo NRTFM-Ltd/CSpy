@@ -57,33 +57,19 @@ fn toggle_popover(window: &WebviewWindow, x: f64, y: f64) {
         return;
     }
 
-    let w = 290.0_f64;
-
-    // Get primary monitor logical width to clamp position
-    let screen_width = window.current_monitor()
+    // Tray click coords are physical — convert to logical once and stay logical
+    let scale = window.current_monitor()
         .ok()
         .flatten()
-        .map(|m| {
-            let size = m.size();
-            let scale = m.scale_factor();
-            size.width as f64 / scale
-        })
-        .unwrap_or(1440.0);
+        .map(|m| m.scale_factor())
+        .unwrap_or(2.0);
 
-    // Position below tray icon, centered on it, but clamp to screen bounds
-    let mut left = x - w / 2.0;
-    let top = y + 4.0;
+    let lx = x / scale;
+    let ly = y / scale;
+    let w = 290.0_f64;
 
-    // Ensure it doesn't go off-screen to the right
-    if left + w > screen_width {
-        left = screen_width - w - 4.0;
-    }
-    // Ensure it doesn't go off-screen to the left
-    if left < 0.0 {
-        left = 4.0;
-    }
-
-    log::info!("Tray at x={}, screen_width={}, popover at x={}", x, screen_width, left);
+    let left = (lx - w / 2.0).max(0.0);
+    let top = ly + 4.0;
 
     let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition {
         x: left,

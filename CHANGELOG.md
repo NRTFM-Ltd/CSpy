@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/TheChasman/CSpy/compare/v0.2.1...v0.2.2) (2026-04-03)
+
+
+### Bug Fixes
+
+* combine release and build into one workflow ([b918d60](https://github.com/TheChasman/CSpy/commit/b918d60a11585cee83ce64611c136ecbb823d9b4))
+
 ## [0.2.1](https://github.com/TheChasman/CSpy/compare/v0.2.0...v0.2.1) (2026-04-03)
 
 

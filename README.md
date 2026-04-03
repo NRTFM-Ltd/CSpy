@@ -1,8 +1,10 @@
 # CSpy
 
-A macOS menu bar app that monitors your Claude AI subscription usage in real time.
+Check your Claude quota at a glance from your macOS menu bar.
 
-CSpy sits in your menu bar and shows how much of your Claude subscription quota you've used. Click the icon to see a popover with your 5-hour quota, burn rate, and countdown timer. The tray icon itself is a mini progress bar that changes colour as usage climbs.
+CSpy sits in your menu bar and shows how much of your Claude quota you've used. Click the icon to see a popover with your 5-hour quota, burn rate, and countdown timer. The tray icon itself is a mini progress bar that changes colour as usage climbs.
+
+**Note:** CSpy polls the usage API every 3 minutes. It's not real-time — useful for checking between sessions, but won't catch rapid consumption as it happens.
 
 | Usage   | Colour |
 |---------|--------|

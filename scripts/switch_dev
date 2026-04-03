@@ -1,16 +1,29 @@
 #!/usr/bin/env bash
-# switch_dev — stop the launchd agent and start Tauri hot-reload dev mode
+# switch_dev — stop launchd agent and start Tauri hot-reload dev mode
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "$ROOT/install.sh")"
-PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "${ROOT}/install.sh")"
+PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
-echo "→ Stopping production agent ($LABEL)…"
-launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null \
-  && echo "  Stopped." \
-  || echo "  Not running — continuing."
+# Kill stale Vite/cargo-watch/tauri-dev processes
+pkill -f "vite" 2>/dev/null || true
+pkill -f "cargo-watch" 2>/dev/null || true
+pkill -f "cargo tauri dev" 2>/dev/null || true
+sleep 1
 
-echo "→ Starting dev mode (Vite + cargo-watch)…"
-cd "$ROOT"
+# Release port 1420 if held
+if lsof -ti:1420 &>/dev/null 2>&1; then
+    echo "Releasing port 1420..."
+    kill "$(lsof -ti:1420)" 2>/dev/null || true
+    sleep 1
+fi
+
+echo "Stopping production agent (${LABEL})..."
+launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null \
+    && echo "  Stopped." \
+    || echo "  Not running — continuing."
+
+echo "Starting dev mode (Vite + cargo-watch)..."
+cd "${ROOT}"
 exec cargo tauri dev

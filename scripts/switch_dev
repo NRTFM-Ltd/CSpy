@@ -5,33 +5,35 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "${ROOT}/install.sh")"
 APP="$(python3 -c "import json; print(json.load(open('${ROOT}/src-tauri/tauri.conf.json'))['productName'])")"
+APP_LOWER="$(echo "${APP}" | tr '[:upper:]' '[:lower:]')"
 PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
 # Stop the launchd production agent
-echo "Stopping production agent (${LABEL})..."
-launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null \
-    && echo "  Stopped." \
-    || echo "  Not running — continuing."
+launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null || true
 
-# Kill all running instances immediately before handing off to cargo tauri dev
-echo "Killing any running CSpy instances..."
+# Kill every possible CSpy variant:
+#   - production bundle   → Contents/MacOS/CSpy
+#   - dev debug binary    → target/debug/cspy  (lowercase — cargo package name)
+#   - preview bundle      → target/release/bundle/macos/CSpy.app
+#   - cargo tauri dev     → the watcher process itself
+#   - vite                → frontend dev server
+echo "Killing all instances..."
 pkill -f "Contents/MacOS/${APP}" 2>/dev/null || true
+pkill -f "target/debug/${APP_LOWER}" 2>/dev/null || true
+pkill -f "target/release/bundle/macos/${APP}" 2>/dev/null || true
 pkill -f "cargo tauri dev" 2>/dev/null || true
-pkill -f "cargo-watch" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
-
-# Release port 1420 if held
-if lsof -ti:1420 &>/dev/null 2>&1; then
-    echo "Releasing port 1420..."
-    kill "$(lsof -ti:1420)" 2>/dev/null || true
-fi
-
 sleep 1
 
+# Release port 1420 if still held
+if lsof -ti:1420 &>/dev/null 2>&1; then
+    kill "$(lsof -ti:1420)" 2>/dev/null || true
+    sleep 1
+fi
+
 LOG="${HOME}/Library/Logs/cspy-dev.log"
-echo "Starting dev mode (Vite + cargo tauri dev)..."
-echo "  Logs: ${LOG}"
+echo "Starting dev mode... (logs: ${LOG})"
 cd "${ROOT}"
 nohup cargo tauri dev > "${LOG}" 2>&1 &
 disown
-echo "  PID $! — use 'switch_prod' or 'switch_prev' to stop."
+echo "Done — PID $!"

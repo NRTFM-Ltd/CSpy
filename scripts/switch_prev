@@ -5,17 +5,14 @@ set -euo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "${ROOT}/install.sh")"
 APP="$(python3 -c "import json; print(json.load(open('${ROOT}/src-tauri/tauri.conf.json'))['productName'])")"
+APP_LOWER="$(echo "${APP}" | tr '[:upper:]' '[:lower:]')"
 PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
-# Stop the launchd agent before building so it doesn't respawn during the build
-echo "Stopping production agent (${LABEL})..."
-launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null \
-    && echo "  Stopped." \
-    || echo "  Not running — continuing."
+# Stop the launchd agent before the build so it can't respawn during compile
+launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null || true
 
-# Release port 1420 if held
+# Release port 1420
 if lsof -ti:1420 &>/dev/null 2>&1; then
-    echo "Releasing port 1420..."
     kill "$(lsof -ti:1420)" 2>/dev/null || true
     sleep 1
 fi
@@ -24,14 +21,14 @@ echo "Building preview binary (this takes a few minutes)..."
 cd "${ROOT}/src-tauri"
 cargo tauri build --config tauri.preview.conf.json
 
-# Kill ALL running CSpy instances immediately before launching the new one
-# (catches anything that started or respawned during the build)
-echo "Killing any running CSpy instances..."
+# Kill everything immediately before launching — catches anything that respawned during the build
+echo "Killing all instances..."
 pkill -f "Contents/MacOS/${APP}" 2>/dev/null || true
+pkill -f "target/debug/${APP_LOWER}" 2>/dev/null || true
+pkill -f "target/release/bundle/macos/${APP}" 2>/dev/null || true
 pkill -f "cargo tauri dev" 2>/dev/null || true
 pkill -f "vite" 2>/dev/null || true
 sleep 1
 
 echo "Launching ${APP} in preview mode..."
 open "${ROOT}/src-tauri/target/release/bundle/macos/${APP}.app"
-echo "  Running — look for PREV badge in the popover."

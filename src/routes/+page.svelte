@@ -2,6 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+	import { getVersion } from '@tauri-apps/api/app';
 	import { type UsageData, type Tier, tierFor, burnRateTier, calculateBurnRate, formatCountdown } from '$lib/types';
 
 	let usage: UsageData | null = $state(null);
@@ -9,12 +10,15 @@
 	let loading = $state(true);
 	let countdownKey = $state(0); // forces countdown re-render
 	let burnRate = $state(0); // %/hr
+	let version = $state('');
 
 	let unlistenUsage: UnlistenFn | undefined;
 	let unlistenError: UnlistenFn | undefined;
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
 	onMount(async () => {
+		// Fetch app version
+		version = await getVersion();
 		// Listen for Rust-side usage updates
 		unlistenUsage = await listen<UsageData>('usage-updated', (event) => {
 			usage = event.payload;
@@ -143,9 +147,12 @@
 	{/if}
 
 	<footer class="dim mono">
-		{#if usage}
-			Updated {new Date(usage.fetched_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-		{/if}
+		<div class="footer-left">
+			{#if usage}
+				Updated {new Date(usage.fetched_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+			{/if}
+		</div>
+		<div class="footer-right">v{version}</div>
 	</footer>
 </div>
 
@@ -238,8 +245,22 @@
 	}
 
 	footer {
-		text-align: right;
-		font-size: 14px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		font-size: 13px;
+		margin-top: 4px;
+	}
+
+	.footer-left {
+		flex: 1;
+		text-align: left;
+	}
+
+	.footer-right {
+		flex-shrink: 0;
+		color: var(--text-dim);
+		letter-spacing: 0.3px;
 	}
 
 	/* Colour utility classes for text */

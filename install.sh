@@ -1,5 +1,5 @@
 #!/bin/bash
-set -uo pipefail
+set -euo pipefail
 
 # CSpy launchd installer
 # Generates plist via heredoc to avoid com.apple.provenance issues

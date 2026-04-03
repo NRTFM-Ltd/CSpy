@@ -11,10 +11,11 @@ use tauri::{
 use tokio::sync::RwLock;
 use usage::UsageData;
 
-/// Shared app state: cached usage + OAuth token.
+/// Shared app state: cached usage, OAuth token, and HTTP client.
 pub struct AppState {
     pub token: RwLock<Option<String>>,
     pub cached: RwLock<Option<UsageData>>,
+    pub client: reqwest::Client,
 }
 
 /// Poll interval in seconds.
@@ -34,7 +35,7 @@ async fn get_usage(state: State<'_, Arc<AppState>>) -> Result<UsageData, String>
 async fn refresh_usage(state: State<'_, Arc<AppState>>) -> Result<UsageData, String> {
     log::info!("refresh_usage called from frontend");
     let token = ensure_token(&state).await?;
-    match usage::fetch_usage(&token).await {
+    match usage::fetch_usage(&state.client, &token).await {
         Ok(data) => {
             *state.cached.write().await = Some(data.clone());
             Ok(data)
@@ -125,7 +126,7 @@ fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
                 }
             };
 
-            match usage::fetch_usage(&token).await {
+            match usage::fetch_usage(&state.client, &token).await {
                 Ok(data) => {
                     // Regenerate tray icon based on utilisation
                     if let Some(bucket) = &data.five_hour {
@@ -176,9 +177,12 @@ fn update_tray_tooltip(app: &tauri::AppHandle, data: &UsageData) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let client = usage::build_client().expect("Failed to build HTTP client");
+
     let state = Arc::new(AppState {
         token: RwLock::new(None),
         cached: RwLock::new(None),
+        client,
     });
 
     tauri::Builder::default()
@@ -228,7 +232,7 @@ pub fn run() {
             let h = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 match ensure_token(&s).await {
-                    Ok(token) => match usage::fetch_usage(&token).await {
+                    Ok(token) => match usage::fetch_usage(&s.client, &token).await {
                         Ok(data) => {
                             // Regenerate tray icon
                             if let Some(bucket) = &data.five_hour {
@@ -252,7 +256,7 @@ pub fn run() {
                         }
                     },
                     Err(e) => {
-                        log::error!("Keychain error on startup: {e}");
+                        log::error!("Token error on startup: {e}");
                         let _ = h.emit("usage-error", &e);
                     }
                 }

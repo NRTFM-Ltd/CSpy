@@ -10,12 +10,13 @@
 	let countdownKey = $state(0); // forces countdown re-render
 	let burnRate = $state(0); // %/hr
 
-	let unlisten: UnlistenFn | undefined;
+	let unlistenUsage: UnlistenFn | undefined;
+	let unlistenError: UnlistenFn | undefined;
 	let ticker: ReturnType<typeof setInterval> | undefined;
 
 	onMount(async () => {
 		// Listen for Rust-side usage updates
-		unlisten = await listen<UsageData>('usage-updated', (event) => {
+		unlistenUsage = await listen<UsageData>('usage-updated', (event) => {
 			usage = event.payload;
 			error = null;
 			loading = false;
@@ -28,7 +29,7 @@
 		});
 
 		// Listen for errors
-		await listen<string>('usage-error', (event) => {
+		unlistenError = await listen<string>('usage-error', (event) => {
 			error = event.payload;
 			loading = false;
 		});
@@ -60,7 +61,8 @@
 	});
 
 	onDestroy(() => {
-		unlisten?.();
+		unlistenUsage?.();
+		unlistenError?.();
 		if (ticker) clearInterval(ticker);
 	});
 

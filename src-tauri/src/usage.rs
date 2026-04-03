@@ -5,13 +5,13 @@ const USER_AGENT: &str = "cspy/0.1.0";
 const BETA_HEADER: &str = "oauth-2025-04-20";
 
 /// Raw API response from the oauth/usage endpoint.
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct ApiResponse {
     five_hour: Option<ApiBucket>,
     seven_day: Option<ApiBucket>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 struct ApiBucket {
     utilization: f64,
     resets_at: Option<String>,
@@ -31,8 +31,17 @@ pub struct UsageBucket {
     pub resets_at: Option<String>,
 }
 
+/// Build a shared HTTP client with sensible defaults.
+pub fn build_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(15))
+        .user_agent(USER_AGENT)
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))
+}
+
 /// Fetch current usage from the Anthropic OAuth endpoint.
-pub async fn fetch_usage(token: &str) -> Result<UsageData, String> {
+pub async fn fetch_usage(client: &reqwest::Client, token: &str) -> Result<UsageData, String> {
     // Small random jitter (50–250ms) to avoid clustering with other callers sharing this token
     let jitter = std::time::Duration::from_millis(50 + (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -41,12 +50,10 @@ pub async fn fetch_usage(token: &str) -> Result<UsageData, String> {
     tokio::time::sleep(jitter).await;
 
     log::info!("API request → {} (after {}ms jitter)", USAGE_URL, jitter.as_millis());
-    let client = reqwest::Client::new();
 
     let resp = client
         .get(USAGE_URL)
         .header("Authorization", format!("Bearer {token}"))
-        .header("User-Agent", USER_AGENT)
         .header("anthropic-beta", BETA_HEADER)
         .header("Accept", "application/json")
         .send()

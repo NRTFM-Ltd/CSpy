@@ -7,24 +7,25 @@ LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "${ROOT}/install.sh")"
 APP="$(python3 -c "import json; print(json.load(open('${ROOT}/src-tauri/tauri.conf.json'))['productName'])")"
 PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
-# Kill all dev/preview processes
-pkill -f "vite" 2>/dev/null || true
-pkill -f "cargo-watch" 2>/dev/null || true
+if [[ ! -f "${PLIST}" ]]; then
+    echo "No plist at ${PLIST} — run install.sh first."
+    exit 1
+fi
+
+# Kill everything before bootstrapping
+echo "Killing any running CSpy instances..."
+pkill -f "Contents/MacOS/${APP}" 2>/dev/null || true
 pkill -f "cargo tauri dev" 2>/dev/null || true
-pkill -x "${APP}" 2>/dev/null || true
-sleep 1
+pkill -f "cargo-watch" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
 
 # Release port 1420 if held
 if lsof -ti:1420 &>/dev/null 2>&1; then
     echo "Releasing port 1420..."
     kill "$(lsof -ti:1420)" 2>/dev/null || true
-    sleep 1
 fi
 
-if [[ ! -f "${PLIST}" ]]; then
-    echo "No plist at ${PLIST} — run install.sh first."
-    exit 1
-fi
+sleep 1
 
 echo "Starting production agent (${LABEL})..."
 launchctl bootstrap "gui/$(id -u)" "${PLIST}"

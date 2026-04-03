@@ -4,26 +4,30 @@ set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
 LABEL="$(sed -n 's/^LABEL="\([^"]*\)".*/\1/p' "${ROOT}/install.sh")"
+APP="$(python3 -c "import json; print(json.load(open('${ROOT}/src-tauri/tauri.conf.json'))['productName'])")"
 PLIST="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 
-# Kill stale Vite/cargo-watch/tauri-dev processes
-pkill -f "vite" 2>/dev/null || true
-pkill -f "cargo-watch" 2>/dev/null || true
-pkill -f "cargo tauri dev" 2>/dev/null || true
-sleep 1
-
-# Release port 1420 if held
-if lsof -ti:1420 &>/dev/null 2>&1; then
-    echo "Releasing port 1420..."
-    kill "$(lsof -ti:1420)" 2>/dev/null || true
-    sleep 1
-fi
-
+# Stop the launchd production agent
 echo "Stopping production agent (${LABEL})..."
 launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null \
     && echo "  Stopped." \
     || echo "  Not running — continuing."
 
-echo "Starting dev mode (Vite + cargo-watch)..."
+# Kill all running instances immediately before handing off to cargo tauri dev
+echo "Killing any running CSpy instances..."
+pkill -f "Contents/MacOS/${APP}" 2>/dev/null || true
+pkill -f "cargo tauri dev" 2>/dev/null || true
+pkill -f "cargo-watch" 2>/dev/null || true
+pkill -f "vite" 2>/dev/null || true
+
+# Release port 1420 if held
+if lsof -ti:1420 &>/dev/null 2>&1; then
+    echo "Releasing port 1420..."
+    kill "$(lsof -ti:1420)" 2>/dev/null || true
+fi
+
+sleep 1
+
+echo "Starting dev mode (Vite + cargo tauri dev)..."
 cd "${ROOT}"
 exec cargo tauri dev

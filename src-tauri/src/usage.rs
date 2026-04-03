@@ -61,9 +61,20 @@ pub async fn fetch_usage(client: &reqwest::Client, token: &str) -> Result<UsageD
         .map_err(|e| format!("HTTP request failed: {e}"))?;
 
     let status = resp.status();
+    if status == reqwest::StatusCode::UNAUTHORIZED {
+        let body = resp.text().await.unwrap_or_default();
+        log::warn!("API returned 401 — token expired or invalid: {body}");
+        return Err("token_expired".into());
+    }
     if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        log::warn!("API rate limited (429) — will use cached data");
-        return Err("rate_limited".into());
+        let retry_after = resp
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok())
+            .unwrap_or(0);
+        log::warn!("API rate limited (429) — Retry-After: {retry_after}s");
+        return Err(format!("rate_limited:{retry_after}"));
     }
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();

@@ -12,6 +12,8 @@ pub struct ClaudeCredentials {
 pub struct OAuthCreds {
     #[serde(rename = "accessToken")]
     pub access_token: String,
+    #[serde(rename = "expiresAt")]
+    pub expires_at: Option<i64>, // millisecond Unix timestamp
     #[serde(rename = "subscriptionType")]
     pub subscription_type: Option<String>,
 }
@@ -34,16 +36,23 @@ impl std::fmt::Debug for ClaudeCredentials {
     }
 }
 
+/// Token with optional expiry (millisecond Unix timestamp).
+pub struct TokenInfo {
+    pub token: String,
+    /// `None` for token-file tokens (no expiry known).
+    pub expires_at_ms: Option<i64>,
+}
+
 /// Read the Claude OAuth token.
 ///
 /// Sources checked in order:
 /// 1. Token file at `~/.config/cspy/token` (for users without Claude Code)
 /// 2. macOS Keychain — "Claude Code-credentials" (automatic if Claude Code is installed)
-pub fn get_oauth_token() -> Result<String, String> {
-    // Source 1: token file
+pub fn get_oauth_token() -> Result<TokenInfo, String> {
+    // Source 1: token file (no expiry info available)
     if let Some(token) = read_token_file() {
         log::info!("Token loaded from ~/.config/cspy/token");
-        return Ok(token);
+        return Ok(TokenInfo { token, expires_at_ms: None });
     }
 
     // Source 2: macOS Keychain (Claude Code stores credentials here)
@@ -63,7 +72,7 @@ fn read_token_file() -> Option<String> {
 }
 
 /// Read token from macOS Keychain via the `security` CLI.
-fn read_keychain_token() -> Result<String, String> {
+fn read_keychain_token() -> Result<TokenInfo, String> {
     let output = Command::new("security")
         .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
         .output()
@@ -93,9 +102,13 @@ fn read_keychain_token() -> Result<String, String> {
     }
 
     log::info!(
-        "Keychain: got token for subscription type {:?}",
-        oauth.subscription_type.as_deref().unwrap_or("unknown")
+        "Keychain: got token for subscription type {:?}, expires_at: {:?}",
+        oauth.subscription_type.as_deref().unwrap_or("unknown"),
+        oauth.expires_at,
     );
 
-    Ok(oauth.access_token)
+    Ok(TokenInfo {
+        token: oauth.access_token,
+        expires_at_ms: oauth.expires_at,
+    })
 }

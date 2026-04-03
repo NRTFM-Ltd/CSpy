@@ -47,5 +47,12 @@
       "exceptionDomain": ""
     }
   },
-  "plugins": {}
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/TheChasman/CSpy/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJCNDA0NzU1M0YwQjk3MEMKUldRTWx3cy9WVWRBdTRMdDhPcW9kaFUyZlIvY3FYeFJ6UDEyNXBxclpMdTlacWlFdzJEeEJ1ZlkK"
+    }
+  }
 }

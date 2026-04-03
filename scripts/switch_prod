@@ -13,6 +13,9 @@ if [[ ! -f "${PLIST}" ]]; then
     exit 1
 fi
 
+# Bootout first so KeepAlive doesn't respawn during the kill window
+launchctl bootout "gui/$(id -u)" "${PLIST}" 2>/dev/null || true
+
 echo "Killing all instances..."
 pkill -x "${APP}" 2>/dev/null || true
 pkill -x "${APP_LOWER}" 2>/dev/null || true

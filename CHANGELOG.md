@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/TheChasman/CSpy/compare/v0.3.0...v0.3.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* calculate burn rate over elapsed time instead of remaining time ([16373dc](https://github.com/TheChasman/CSpy/commit/16373dc3ad745ab1eced5a308559342b1ad98e0b))
+
 ## [0.3.0](https://github.com/TheChasman/CSpy/compare/v0.2.3...v0.3.0) (2026-04-03)
 
 

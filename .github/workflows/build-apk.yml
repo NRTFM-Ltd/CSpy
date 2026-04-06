@@ -1,0 +1,92 @@
+# .github/workflows/build-apk.yml
+# Builds a Tauri v2 Android APK on every push to main
+# Downloads: Actions tab → workflow run → Artifacts
+# Optional: emails the APK to you (see email job below)
+
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # Manual trigger from GitHub UI
+
+env:
+  JAVA_VERSION: '17'
+  NDK_VERSION: '26.1.10909125'
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;${{ env.NDK_VERSION }}"
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build APK
+        run: |
+          cd src-tauri
+          cargo tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/${{ env.NDK_VERSION }}
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          retention-days: 14
+
+  # ── Optional: email the APK to yourself ──────────────────────
+  # Uncomment below and set these repository secrets:
+  #   MAIL_USERNAME  — your Gmail address
+  #   MAIL_PASSWORD  — a Gmail App Password (not your login password)
+  #   NOTIFY_EMAIL   — where to send the APK
+  #
+  # email-apk:
+  #   needs: build-apk
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download APK artifact
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: app-debug-apk
+  #         path: ./apk
+  #
+  #     - name: Send email
+  #       uses: dawidd6/action-send-mail@v3
+  #       with:
+  #         server_address: smtp.gmail.com
+  #         server_port: 587
+  #         username: ${{ secrets.MAIL_USERNAME }}
+  #         password: ${{ secrets.MAIL_PASSWORD }}
+  #         subject: "APK Build — ${{ github.repository }} @ ${{ github.sha }}"
+  #         to: ${{ secrets.NOTIFY_EMAIL }}
+  #         from: GitHub Actions
+  #         body: "Fresh APK attached from commit ${{ github.sha }}"
+  #         attachments: ./apk/**/*.apk

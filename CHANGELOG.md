@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/TheChasman/CSpy/compare/v0.3.1...v0.4.0) (2026-04-07)
+
+
+### Features
+
+* add 5-hour countdown timer to tray icon title ([ad8a321](https://github.com/TheChasman/CSpy/commit/ad8a3212def5cf271a7f76891f2d6e815ba60652))
+
 ## [0.3.1](https://github.com/TheChasman/CSpy/compare/v0.3.0...v0.3.1) (2026-04-04)
 
 

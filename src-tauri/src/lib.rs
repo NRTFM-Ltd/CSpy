@@ -1,5 +1,5 @@
 mod keychain;
-mod usage;
+pub mod usage;
 mod icon;
 
 use std::sync::Arc;
@@ -148,10 +148,14 @@ fn toggle_popover(window: &WebviewWindow, x: f64, y: f64) {
 
 // ── Background polling loop ──────────────────────────────────
 
+/// Returns true if the given hour (0–23) falls within quiet hours (23:00–08:00).
+fn is_quiet_hours_at(hour: u32) -> bool {
+    hour >= 23 || hour < 8
+}
+
 /// Returns true if current local time is within quiet hours (23:00–08:00).
 fn is_quiet_hours() -> bool {
-    let hour = chrono::Local::now().hour();
-    hour >= 23 || hour < 8
+    is_quiet_hours_at(chrono::Local::now().hour())
 }
 
 /// Compute backoff sleep: after 2+ consecutive errors, double each time up to MAX_BACKOFF_SECS.

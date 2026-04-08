@@ -93,7 +93,7 @@ Each test spins up a `MockServer`, overrides the `USAGE_URL` constant (extracted
 | 500 with body | `Err` containing the status code |
 | Malformed JSON body | `Err` containing "parse" |
 
-To make the URL injectable, `fetch_usage` gains a second parameter `base_url: &str` (defaulting to the production URL at the call sites). In test code the mock server's URI is passed instead.
+To make the URL injectable, `fetch_usage` gains a `url: &str` parameter — the full endpoint URL (e.g. `"https://api.anthropic.com/api/oauth/usage"`). Production callers pass the `USAGE_URL` constant. Integration tests pass `format!("{}/api/oauth/usage", mock_server.uri())`.
 
 ---
 

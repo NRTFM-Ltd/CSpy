@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
+pub const USAGE_URL: &str = "https://api.anthropic.com/api/oauth/usage";
 const USER_AGENT: &str = "cspy/0.1.0";
 const BETA_HEADER: &str = "oauth-2025-04-20";
 
@@ -42,6 +42,11 @@ pub fn build_client() -> Result<reqwest::Client, String> {
 
 /// Fetch current usage from the Anthropic OAuth endpoint.
 pub async fn fetch_usage(client: &reqwest::Client, token: &str) -> Result<UsageData, String> {
+    fetch_usage_from(client, token, USAGE_URL).await
+}
+
+/// Fetch usage from a given URL. Used by integration tests with a mock server.
+pub async fn fetch_usage_from(client: &reqwest::Client, token: &str, url: &str) -> Result<UsageData, String> {
     // Small random jitter (50–250ms) to avoid clustering with other callers sharing this token
     let jitter = std::time::Duration::from_millis(50 + (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -49,10 +54,10 @@ pub async fn fetch_usage(client: &reqwest::Client, token: &str) -> Result<UsageD
         .subsec_millis() as u64 % 200));
     tokio::time::sleep(jitter).await;
 
-    log::info!("API request → {} (after {}ms jitter)", USAGE_URL, jitter.as_millis());
+    log::info!("API request → {} (after {}ms jitter)", url, jitter.as_millis());
 
     let resp = client
-        .get(USAGE_URL)
+        .get(url)
         .header("Authorization", format!("Bearer {token}"))
         .header("anthropic-beta", BETA_HEADER)
         .header("Accept", "application/json")

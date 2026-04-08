@@ -11,7 +11,7 @@ use tauri::{
 use tokio::sync::RwLock;
 use usage::UsageData;
 
-/// Shared app state: cached usage, OAuth token, and HTTP client.
+/// Shared app state: cached usage, OAuth token, HTTP client, and heartbeat tracking.
 pub struct AppState {
     pub token: RwLock<Option<String>>,
     /// Token expiry as millisecond Unix timestamp (None = unknown / token-file source).
@@ -20,6 +20,12 @@ pub struct AppState {
     pub client: reqwest::Client,
     /// Set to true when an update has been downloaded and is ready to install on restart.
     pub update_pending: RwLock<bool>,
+    /// Last time the frontend sent a heartbeat. None = not yet received.
+    pub last_heartbeat: RwLock<Option<std::time::Instant>>,
+    /// When the app started — used for the heartbeat grace period.
+    pub startup_time: std::time::Instant,
+    /// Vite child process (dev builds only). Killed on app exit.
+    pub vite_child: std::sync::Mutex<Option<std::process::Child>>,
 }
 
 /// Poll interval in seconds.
@@ -55,6 +61,13 @@ async fn get_usage(state: State<'_, Arc<AppState>>) -> Result<UsageData, String>
         return Ok(data.clone());
     }
     Err("No cached data yet — waiting for first poll".into())
+}
+
+/// Called by the frontend every 30s to signal it is alive.
+#[tauri::command]
+async fn heartbeat(state: State<'_, Arc<AppState>>) -> Result<(), ()> {
+    *state.last_heartbeat.write().await = Some(std::time::Instant::now());
+    Ok(())
 }
 
 #[tauri::command]
@@ -455,6 +468,9 @@ pub fn run() {
         cached: RwLock::new(None),
         client,
         update_pending: RwLock::new(false),
+        last_heartbeat: RwLock::new(None),
+        startup_time: std::time::Instant::now(),
+        vite_child: std::sync::Mutex::new(None),
     });
 
     tauri::Builder::default()
@@ -462,7 +478,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state.clone())
-        .invoke_handler(tauri::generate_handler![get_usage, refresh_usage])
+        .invoke_handler(tauri::generate_handler![get_usage, refresh_usage, heartbeat])
         .setup(move |app| {
             // Hide from Dock — menu bar only app
             #[cfg(target_os = "macos")]

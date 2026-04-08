@@ -62,7 +62,12 @@ pub fn get_oauth_token() -> Result<TokenInfo, String> {
 /// Read token from ~/.config/cspy/token if it exists.
 fn read_token_file() -> Option<String> {
     let home = std::env::var("HOME").ok()?;
-    let path = std::path::Path::new(&home).join(".config/cspy/token");
+    read_token_file_from(std::path::Path::new(&home))
+}
+
+/// Read token from `<home>/.config/cspy/token`. Testable with a temp directory.
+fn read_token_file_from(home: &std::path::Path) -> Option<String> {
+    let path = home.join(".config/cspy/token");
     let contents = std::fs::read_to_string(&path).ok()?;
     let token = contents.trim().to_string();
     if token.is_empty() {

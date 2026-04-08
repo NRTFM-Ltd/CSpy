@@ -31,6 +31,15 @@ const MAX_BACKOFF_SECS: u64 = 1800;
 /// Update check interval in seconds (30 minutes).
 const UPDATE_CHECK_SECS: u64 = 1800;
 
+/// Seconds after startup before the watchdog begins checking heartbeats.
+const HEARTBEAT_GRACE_SECS: u64 = 15;
+
+/// Seconds without a heartbeat before the frontend is considered unhealthy.
+const HEARTBEAT_THRESHOLD_SECS: u64 = 90;
+
+/// Watchdog tick interval in seconds.
+const WATCHDOG_TICK_SECS: u64 = 60;
+
 // ── Tauri commands (called from Svelte) ──────────────────────
 
 #[tauri::command]
@@ -166,6 +175,31 @@ fn backoff_sleep(consecutive_errors: u32) -> u64 {
     }
     let multiplier = 1u64 << (consecutive_errors - 1).min(5);
     (POLL_SECS * multiplier).min(MAX_BACKOFF_SECS)
+}
+
+/// Returns true if the frontend is healthy.
+/// Pure function — no I/O, easy to test.
+///
+/// `last_heartbeat`: when the last heartbeat was received (`None` = never)
+/// `startup`: when the app started
+/// `now`: current time (pass `Instant::now()` in production)
+/// `grace_secs`: seconds after startup before checking
+/// `threshold_secs`: seconds without a heartbeat before unhealthy
+fn is_frontend_healthy(
+    last_heartbeat: Option<std::time::Instant>,
+    startup: std::time::Instant,
+    now: std::time::Instant,
+    grace_secs: u64,
+    threshold_secs: u64,
+) -> bool {
+    // Still in startup grace period — don't alert on slow WebView loads
+    if now.duration_since(startup).as_secs() < grace_secs {
+        return true;
+    }
+    match last_heartbeat {
+        None => false, // past grace period, no heartbeat ever received
+        Some(last) => now.duration_since(last).as_secs() < threshold_secs,
+    }
 }
 
 fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
@@ -602,5 +636,37 @@ mod tests {
     #[test]
     fn backoff_capped_at_max() {
         assert_eq!(backoff_sleep(10), MAX_BACKOFF_SECS);
+    }
+
+    #[test]
+    fn heartbeat_healthy_within_threshold() {
+        let now = std::time::Instant::now();
+        let startup = now - std::time::Duration::from_secs(60);
+        let last_beat = Some(now - std::time::Duration::from_secs(60));
+        assert!(is_frontend_healthy(last_beat, startup, now, 15, 90));
+    }
+
+    #[test]
+    fn heartbeat_unhealthy_beyond_threshold() {
+        let now = std::time::Instant::now();
+        let startup = now - std::time::Duration::from_secs(200);
+        let last_beat = Some(now - std::time::Duration::from_secs(100));
+        assert!(!is_frontend_healthy(last_beat, startup, now, 15, 90));
+    }
+
+    #[test]
+    fn heartbeat_healthy_during_grace_period() {
+        let now = std::time::Instant::now();
+        let startup = now - std::time::Duration::from_secs(10); // 10s < 15s grace
+        let last_beat = None; // no heartbeat yet
+        assert!(is_frontend_healthy(last_beat, startup, now, 15, 90));
+    }
+
+    #[test]
+    fn heartbeat_none_after_grace_period() {
+        let now = std::time::Instant::now();
+        let startup = now - std::time::Duration::from_secs(20); // 20s > 15s grace
+        let last_beat = None; // no heartbeat ever received
+        assert!(!is_frontend_healthy(last_beat, startup, now, 15, 90));
     }
 }

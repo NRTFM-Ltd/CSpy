@@ -257,12 +257,23 @@ fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
 }
 
 /// Tick every 60 seconds to update the tray countdown without a fresh API fetch.
+/// Also resets the icon to 0% when the five-hour window has expired (e.g. during quiet hours).
 fn start_countdown_ticker(app_handle: tauri::AppHandle, state: Arc<AppState>) {
     tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             if let Some(data) = state.cached.read().await.as_ref() {
                 update_tray_title(&app_handle, data);
+
+                // If the five-hour window has expired, reset the icon to 0%
+                if let Some(bucket) = &data.five_hour {
+                    if is_window_expired(bucket) {
+                        let empty_icon = icon::generate_usage_icon(0.0);
+                        if let Some(tray) = app_handle.tray_by_id("cspy-tray") {
+                            let _ = tray.set_icon(Some(empty_icon));
+                        }
+                    }
+                }
             }
         }
     });
@@ -331,6 +342,14 @@ fn start_update_checker(app_handle: tauri::AppHandle, state: Arc<AppState>) {
     });
 }
 
+/// Returns true if the bucket's five-hour window has expired (resets_at is in the past).
+fn is_window_expired(bucket: &usage::UsageBucket) -> bool {
+    bucket.resets_at.as_deref()
+        .and_then(|r| chrono::DateTime::parse_from_rfc3339(r).ok())
+        .map(|reset| reset < chrono::Utc::now())
+        .unwrap_or(false)
+}
+
 /// Format remaining time until `resets_at` as "Xh Ym", "Ym", or "0m".
 fn format_countdown(resets_at: &str) -> String {
     let Ok(reset) = chrono::DateTime::parse_from_rfc3339(resets_at) else {
@@ -338,7 +357,7 @@ fn format_countdown(resets_at: &str) -> String {
     };
     let total_mins = reset.signed_duration_since(chrono::Utc::now()).num_minutes();
     if total_mins <= 0 {
-        return "0m".into();
+        return "—".into();
     }
     let hours = total_mins / 60;
     let mins = total_mins % 60;

@@ -40,6 +40,13 @@ const HEARTBEAT_THRESHOLD_SECS: u64 = 90;
 /// Watchdog tick interval in seconds.
 const WATCHDOG_TICK_SECS: u64 = 60;
 
+// Compile-time sanity check: threshold must exceed tick interval or the
+// watchdog can miss a failure that recovers between ticks.
+const _: () = assert!(
+    HEARTBEAT_THRESHOLD_SECS > WATCHDOG_TICK_SECS,
+    "HEARTBEAT_THRESHOLD_SECS must exceed WATCHDOG_TICK_SECS"
+);
+
 // ── Tauri commands (called from Svelte) ──────────────────────
 
 #[tauri::command]

@@ -105,3 +105,76 @@ pub async fn fetch_usage_from(client: &reqwest::Client, token: &str, url: &str) 
         fetched_at: now,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_api_response(json: &str) -> UsageData {
+        let api: ApiResponse = serde_json::from_str(json).unwrap();
+        let now = chrono::Utc::now().to_rfc3339();
+        UsageData {
+            five_hour: api.five_hour.map(|b| UsageBucket {
+                utilisation: b.utilization / 100.0,
+                resets_at: b.resets_at,
+            }),
+            seven_day: api.seven_day.map(|b| UsageBucket {
+                utilisation: b.utilization / 100.0,
+                resets_at: b.resets_at,
+            }),
+            fetched_at: now,
+        }
+    }
+
+    #[test]
+    fn normalises_utilization_50_to_0_5() {
+        let data = parse_api_response(r#"{
+            "five_hour": { "utilization": 50.0, "resets_at": "2026-04-08T12:00:00Z" },
+            "seven_day": null
+        }"#);
+        let bucket = data.five_hour.unwrap();
+        assert!((bucket.utilisation - 0.5).abs() < f64::EPSILON);
+        assert_eq!(bucket.resets_at, Some("2026-04-08T12:00:00Z".to_string()));
+    }
+
+    #[test]
+    fn normalises_utilization_0_to_0() {
+        let data = parse_api_response(r#"{
+            "five_hour": { "utilization": 0.0, "resets_at": null },
+            "seven_day": null
+        }"#);
+        let bucket = data.five_hour.unwrap();
+        assert!((bucket.utilisation - 0.0).abs() < f64::EPSILON);
+        assert!(bucket.resets_at.is_none());
+    }
+
+    #[test]
+    fn normalises_utilization_100_to_1() {
+        let data = parse_api_response(r#"{
+            "five_hour": { "utilization": 100.0, "resets_at": null },
+            "seven_day": null
+        }"#);
+        let bucket = data.five_hour.unwrap();
+        assert!((bucket.utilisation - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn missing_five_hour_is_none() {
+        let data = parse_api_response(r#"{
+            "five_hour": null,
+            "seven_day": { "utilization": 10.0, "resets_at": null }
+        }"#);
+        assert!(data.five_hour.is_none());
+        assert!(data.seven_day.is_some());
+    }
+
+    #[test]
+    fn both_buckets_present() {
+        let data = parse_api_response(r#"{
+            "five_hour": { "utilization": 25.0, "resets_at": "2026-04-08T15:00:00Z" },
+            "seven_day": { "utilization": 10.0, "resets_at": "2026-04-12T00:00:00Z" }
+        }"#);
+        assert!((data.five_hour.unwrap().utilisation - 0.25).abs() < f64::EPSILON);
+        assert!((data.seven_day.unwrap().utilisation - 0.10).abs() < f64::EPSILON);
+    }
+}

@@ -90,3 +90,86 @@ pub fn generate_usage_icon(utilisation: f64) -> Image<'static> {
 
     Image::new(rgba_static, ICON_WIDTH, ICON_HEIGHT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pixel_at(rgba: &[u8], x: u32, y: u32) -> (u8, u8, u8, u8) {
+        let idx = ((y * ICON_WIDTH + x) * 4) as usize;
+        (rgba[idx], rgba[idx + 1], rgba[idx + 2], rgba[idx + 3])
+    }
+
+    fn count_interior_pixels_with_rgb(rgba: &[u8], rgb: (u8, u8, u8)) -> u32 {
+        let mut count = 0;
+        for y in 6..26 {
+            for x in 4..28 {
+                let (r, g, b, _) = pixel_at(rgba, x, y);
+                if (r, g, b) == rgb {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+
+    #[test]
+    fn dimensions_are_32x32() {
+        let rgba = render_icon_rgba(0.5);
+        assert_eq!(rgba.len(), (32 * 32 * 4) as usize);
+    }
+
+    #[test]
+    fn zero_percent_has_no_fill_pixels() {
+        let rgba = render_icon_rgba(0.0);
+        let green = count_interior_pixels_with_rgb(&rgba, (74, 222, 128));
+        assert_eq!(green, 0, "0% should have no green fill pixels");
+    }
+
+    #[test]
+    fn fifty_percent_uses_green() {
+        let rgba = render_icon_rgba(0.5);
+        let green = count_interior_pixels_with_rgb(&rgba, (74, 222, 128));
+        let grey = count_interior_pixels_with_rgb(&rgba, (180, 180, 180));
+        assert!(green > 0, "50% should have green fill pixels");
+        assert!(grey > 0, "50% should have empty grey pixels too");
+    }
+
+    #[test]
+    fn seventy_percent_uses_amber() {
+        let rgba = render_icon_rgba(0.70);
+        let amber = count_interior_pixels_with_rgb(&rgba, (251, 191, 36));
+        assert!(amber > 0, "70% should use amber fill");
+    }
+
+    #[test]
+    fn ninety_percent_uses_red() {
+        let rgba = render_icon_rgba(0.90);
+        let red = count_interior_pixels_with_rgb(&rgba, (248, 113, 113));
+        assert!(red > 0, "90% should use red fill");
+    }
+
+    #[test]
+    fn hundred_percent_fills_entire_interior() {
+        let rgba = render_icon_rgba(1.0);
+        let grey = count_interior_pixels_with_rgb(&rgba, (180, 180, 180));
+        assert_eq!(grey, 0, "100% should have no empty grey pixels in interior");
+    }
+
+    #[test]
+    fn padding_rows_are_transparent() {
+        let rgba = render_icon_rgba(0.5);
+        for y in 0..4 {
+            for x in 0..ICON_WIDTH {
+                let (_, _, _, a) = pixel_at(&rgba, x, y);
+                assert_eq!(a, 0, "pixel ({x},{y}) in top padding should be transparent");
+            }
+        }
+        for y in 28..ICON_HEIGHT {
+            for x in 0..ICON_WIDTH {
+                let (_, _, _, a) = pixel_at(&rgba, x, y);
+                assert_eq!(a, 0, "pixel ({x},{y}) in bottom padding should be transparent");
+            }
+        }
+    }
+}

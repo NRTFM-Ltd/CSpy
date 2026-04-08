@@ -511,3 +511,96 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running CSpy");
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn countdown_future_hours_and_mins() {
+        let reset = (chrono::Utc::now() + chrono::Duration::minutes(150)).to_rfc3339();
+        let result = format_countdown(&reset);
+        assert!(result.starts_with("2h "), "expected '2h Xm', got '{result}'");
+    }
+
+    #[test]
+    fn countdown_future_mins_only() {
+        let reset = (chrono::Utc::now() + chrono::Duration::minutes(42)).to_rfc3339();
+        let result = format_countdown(&reset);
+        // Allow 1m tolerance due to timing variations
+        assert!(result == "42m" || result == "41m", "expected '41m' or '42m', got '{result}'");
+    }
+
+    #[test]
+    fn countdown_past_returns_dash() {
+        let reset = (chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339();
+        assert_eq!(format_countdown(&reset), "\u{2014}");
+    }
+
+    #[test]
+    fn countdown_unparseable_returns_dash() {
+        assert_eq!(format_countdown("not-a-date"), "\u{2014}");
+    }
+
+    #[test]
+    fn window_expired_past_resets_at() {
+        let bucket = usage::UsageBucket {
+            utilisation: 0.5,
+            resets_at: Some((chrono::Utc::now() - chrono::Duration::hours(1)).to_rfc3339()),
+        };
+        assert!(is_window_expired(&bucket));
+    }
+
+    #[test]
+    fn window_not_expired_future_resets_at() {
+        let bucket = usage::UsageBucket {
+            utilisation: 0.5,
+            resets_at: Some((chrono::Utc::now() + chrono::Duration::hours(3)).to_rfc3339()),
+        };
+        assert!(!is_window_expired(&bucket));
+    }
+
+    #[test]
+    fn window_not_expired_none_resets_at() {
+        let bucket = usage::UsageBucket {
+            utilisation: 0.5,
+            resets_at: None,
+        };
+        assert!(!is_window_expired(&bucket));
+    }
+
+    #[test]
+    fn quiet_hours_boundaries() {
+        assert!(!is_quiet_hours_at(22), "22:00 should NOT be quiet");
+        assert!(is_quiet_hours_at(23),  "23:00 should be quiet");
+        assert!(is_quiet_hours_at(0),   "00:00 should be quiet");
+        assert!(is_quiet_hours_at(7),   "07:00 should be quiet");
+        assert!(!is_quiet_hours_at(8),  "08:00 should NOT be quiet");
+        assert!(!is_quiet_hours_at(12), "12:00 should NOT be quiet");
+    }
+
+    #[test]
+    fn backoff_zero_errors_returns_poll_secs() {
+        assert_eq!(backoff_sleep(0), POLL_SECS);
+    }
+
+    #[test]
+    fn backoff_one_error_returns_poll_secs() {
+        assert_eq!(backoff_sleep(1), POLL_SECS);
+    }
+
+    #[test]
+    fn backoff_two_errors_doubles() {
+        assert_eq!(backoff_sleep(2), POLL_SECS * 2);
+    }
+
+    #[test]
+    fn backoff_three_errors_quadruples() {
+        assert_eq!(backoff_sleep(3), POLL_SECS * 4);
+    }
+
+    #[test]
+    fn backoff_capped_at_max() {
+        assert_eq!(backoff_sleep(10), MAX_BACKOFF_SECS);
+    }
+}

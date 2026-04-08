@@ -117,3 +117,84 @@ fn read_keychain_token() -> Result<TokenInfo, String> {
         expires_at_ms: oauth.expires_at,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_valid_token_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        let token_dir = tmp.path().join(".config/cspy");
+        std::fs::create_dir_all(&token_dir).unwrap();
+        std::fs::write(token_dir.join("token"), "  sk-ant-oat01-test-token  \n").unwrap();
+        let result = read_token_file_from(tmp.path());
+        assert_eq!(result, Some("sk-ant-oat01-test-token".to_string()));
+    }
+
+    #[test]
+    fn empty_token_file_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        let token_dir = tmp.path().join(".config/cspy");
+        std::fs::create_dir_all(&token_dir).unwrap();
+        std::fs::write(token_dir.join("token"), "  \n").unwrap();
+        assert_eq!(read_token_file_from(tmp.path()), None);
+    }
+
+    #[test]
+    fn missing_token_file_returns_none() {
+        let tmp = tempfile::tempdir().unwrap();
+        assert_eq!(read_token_file_from(tmp.path()), None);
+    }
+
+    #[test]
+    fn parses_valid_credentials() {
+        let json = r#"{
+            "claudeAiOauth": {
+                "accessToken": "sk-ant-oat01-abc123",
+                "expiresAt": 1700000000000,
+                "subscriptionType": "pro"
+            }
+        }"#;
+        let creds: ClaudeCredentials = serde_json::from_str(json).unwrap();
+        let oauth = creds.claude_ai_oauth.unwrap();
+        assert_eq!(oauth.access_token, "sk-ant-oat01-abc123");
+        assert_eq!(oauth.expires_at, Some(1700000000000));
+        assert_eq!(oauth.subscription_type, Some("pro".to_string()));
+    }
+
+    #[test]
+    fn parses_credentials_without_oauth_field() {
+        let json = r#"{}"#;
+        let creds: ClaudeCredentials = serde_json::from_str(json).unwrap();
+        assert!(creds.claude_ai_oauth.is_none());
+    }
+
+    #[test]
+    fn parses_credentials_with_null_optional_fields() {
+        let json = r#"{
+            "claudeAiOauth": {
+                "accessToken": "sk-ant-oat01-abc123",
+                "expiresAt": null,
+                "subscriptionType": null
+            }
+        }"#;
+        let creds: ClaudeCredentials = serde_json::from_str(json).unwrap();
+        let oauth = creds.claude_ai_oauth.unwrap();
+        assert_eq!(oauth.access_token, "sk-ant-oat01-abc123");
+        assert!(oauth.expires_at.is_none());
+        assert!(oauth.subscription_type.is_none());
+    }
+
+    #[test]
+    fn debug_output_redacts_token() {
+        let oauth = OAuthCreds {
+            access_token: "sk-ant-oat01-super-secret".to_string(),
+            expires_at: None,
+            subscription_type: None,
+        };
+        let debug_str = format!("{:?}", oauth);
+        assert!(debug_str.contains("[REDACTED]"), "debug should redact token");
+        assert!(!debug_str.contains("super-secret"), "debug must NOT contain the actual token");
+    }
+}

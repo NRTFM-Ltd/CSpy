@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/NRTFM-Ltd/CSpy/compare/v0.4.0...v0.5.0) (2026-04-08)
+
+
+### Features
+
+* add test suite, linting, and CI ([#11](https://github.com/NRTFM-Ltd/CSpy/issues/11)) ([5e5697e](https://github.com/NRTFM-Ltd/CSpy/commit/5e5697e929292f71de9f43c8257acc4b77a3666d))
+
+
+### Bug Fixes
+
+* **ci:** install tauri-cli in Android APK workflow ([e235b04](https://github.com/NRTFM-Ltd/CSpy/commit/e235b0484f7a8947ab71c17ef97adc31c1944b9e))
+* reset stale tray icon after window expires ([#10](https://github.com/NRTFM-Ltd/CSpy/issues/10)) ([470d050](https://github.com/NRTFM-Ltd/CSpy/commit/470d05059c2ec11a88f3d0d6bd3a444cd4340a72))
+
 ## [0.4.0](https://github.com/TheChasman/CSpy/compare/v0.3.1...v0.4.0) (2026-04-07)
 
 

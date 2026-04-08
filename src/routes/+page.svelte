@@ -15,6 +15,7 @@
 	let unlistenUsage: UnlistenFn | undefined;
 	let unlistenError: UnlistenFn | undefined;
 	let ticker: ReturnType<typeof setInterval> | undefined;
+	let heartbeatTicker: ReturnType<typeof setInterval> | undefined;
 
 	onMount(async () => {
 		// Fetch app version
@@ -49,6 +50,11 @@
 			}
 		}, 30_000);
 
+		// Heartbeat — tells Rust the frontend is alive every 30s
+		heartbeatTicker = setInterval(() => {
+			invoke('heartbeat').catch(() => {/* swallow — watchdog handles recovery */});
+		}, 30_000);
+
 		// Request immediate fetch
 		try {
 			usage = await invoke<UsageData>('get_usage');
@@ -68,6 +74,7 @@
 		unlistenUsage?.();
 		unlistenError?.();
 		if (ticker) clearInterval(ticker);
+		if (heartbeatTicker) clearInterval(heartbeatTicker);
 	});
 
 	async function refresh() {

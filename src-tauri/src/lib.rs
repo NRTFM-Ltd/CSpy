@@ -640,6 +640,9 @@ pub fn run() {
             // Start background update checker
             start_update_checker(app.handle().clone(), state.clone());
 
+            // Start frontend heartbeat watchdog
+            start_watchdog(app.handle().clone(), state.clone());
+
             // Immediate first fetch
             let s = state.clone();
             let h = app.handle().clone();
@@ -683,8 +686,20 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running CSpy");
+        .build(tauri::generate_context!())
+        .expect("error while building CSpy")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                // Kill Vite child process if we spawned it
+                let state: Arc<AppState> = app_handle.state::<Arc<AppState>>().inner().clone();
+                if let Ok(mut guard) = state.vite_child.lock() {
+                    if let Some(ref mut child) = *guard {
+                        let _ = child.kill();
+                        log::info!("Watchdog: killed Vite child on exit");
+                    }
+                };
+            }
+        });
 }
 
 #[cfg(test)]

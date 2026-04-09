@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.0](https://github.com/NRTFM-Ltd/CSpy/compare/v0.5.0...v0.6.0) (2026-04-09)
+
+
+### Features
+
+* add heartbeat AppState fields and command ([a326963](https://github.com/NRTFM-Ltd/CSpy/commit/a3269631e51d666040c999750a452694c8103141))
+* add is_frontend_healthy with TDD ([86dd698](https://github.com/NRTFM-Ltd/CSpy/commit/86dd698dbf5ac8c06da327146d72b1ffdd4bf5d6))
+* add watchdog task and dev Vite recovery ([b4bcb9f](https://github.com/NRTFM-Ltd/CSpy/commit/b4bcb9f3160f8fac1fd33484aaf2bbec65ef5308))
+* emit heartbeat from frontend every 30s ([3291d0e](https://github.com/NRTFM-Ltd/CSpy/commit/3291d0e60f668416fd18fecad30ab39e47579ba7))
+* wire watchdog and add exit handler for Vite cleanup ([7e7f5a2](https://github.com/NRTFM-Ltd/CSpy/commit/7e7f5a23482cfa12f78c2b0ee8ef185e5401fe24))
+
+
+### Bug Fixes
+
+* prevent stale frontend builds causing WSOD ([#13](https://github.com/NRTFM-Ltd/CSpy/issues/13)) ([04576c1](https://github.com/NRTFM-Ltd/CSpy/commit/04576c189b9dc7af0b668d7a21290993930d1895))
+* prevent watchdog from blocking Tokio executor ([f208c51](https://github.com/NRTFM-Ltd/CSpy/commit/f208c51a8c60036b9d9dd5b9f1f0b778ae5da86d))
+* startup_time OnceLock and heartbeat return type ([cc5e6aa](https://github.com/NRTFM-Ltd/CSpy/commit/cc5e6aa776796e1033a917af04dae77aa333ce4b))
+
 ## [0.5.0](https://github.com/NRTFM-Ltd/CSpy/compare/v0.4.0...v0.5.0) (2026-04-08)
 
 

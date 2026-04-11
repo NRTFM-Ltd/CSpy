@@ -261,16 +261,8 @@ fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
                         }
                         consecutive_errors = 0;
 
-                        // Regenerate tray icon based on utilisation
-                        if let Some(bucket) = &data.five_hour {
-                            let new_icon = icon::generate_usage_icon(bucket.utilisation);
-                            if let Some(tray) = app_handle.tray_by_id("cspy-tray") {
-                                let _ = tray.set_icon(Some(new_icon));
-                            }
-                        }
-
+                        update_tray_icon(&app_handle, &data);
                         update_tray_tooltip(&app_handle, &data);
-                        update_tray_title(&app_handle, &data);
                         *state.cached.write().await = Some(data.clone());
                         let _ = app_handle.emit("usage-updated", &data);
                     }
@@ -314,24 +306,14 @@ fn start_polling(app_handle: tauri::AppHandle, state: Arc<AppState>) {
     });
 }
 
-/// Tick every 60 seconds to update the tray countdown without a fresh API fetch.
+/// Tick every 60 seconds to update the tray icon countdown without a fresh API fetch.
 /// Also resets the icon to 0% when the five-hour window has expired (e.g. during quiet hours).
 fn start_countdown_ticker(app_handle: tauri::AppHandle, state: Arc<AppState>) {
     tauri::async_runtime::spawn(async move {
         loop {
             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
             if let Some(data) = state.cached.read().await.as_ref() {
-                update_tray_title(&app_handle, data);
-
-                // If the five-hour window has expired, reset the icon to 0%
-                if let Some(bucket) = &data.five_hour {
-                    if is_window_expired(bucket) {
-                        let empty_icon = icon::generate_usage_icon(0.0);
-                        if let Some(tray) = app_handle.tray_by_id("cspy-tray") {
-                            let _ = tray.set_icon(Some(empty_icon));
-                        }
-                    }
-                }
+                update_tray_icon(&app_handle, data);
             }
         }
     });
@@ -551,14 +533,20 @@ fn format_countdown(resets_at: &str) -> String {
     }
 }
 
-/// Set the tray icon title (text to the right of the icon) to the 5-hour countdown.
-fn update_tray_title(app: &tauri::AppHandle, data: &UsageData) {
-    let label = data.five_hour.as_ref()
-        .and_then(|b| b.resets_at.as_deref())
-        .map(format_countdown)
-        .unwrap_or_else(|| "—".into());
+/// Regenerate the tray icon with the current utilisation and countdown text baked in.
+fn update_tray_icon(app: &tauri::AppHandle, data: &UsageData) {
+    let (util, cd_string) = match &data.five_hour {
+        Some(bucket) if !is_window_expired(bucket) => {
+            let cd = bucket.resets_at.as_deref()
+                .map(format_countdown)
+                .filter(|s| s != "\u{2014}"); // filter out em dash (expired)
+            (bucket.utilisation, cd)
+        }
+        _ => (0.0, None),
+    };
+    let new_icon = icon::generate_usage_icon(util, cd_string.as_deref());
     if let Some(tray) = app.tray_by_id("cspy-tray") {
-        let _ = tray.set_title(Some(label.as_str()));
+        let _ = tray.set_icon(Some(new_icon));
     }
 }
 
@@ -617,7 +605,7 @@ pub fn run() {
             // Build system tray
             TrayIconBuilder::with_id("cspy-tray")
                 .tooltip("CSpy — loading…")
-                .icon(icon::generate_usage_icon(0.0))
+                .icon(icon::generate_usage_icon(0.0, None))
                 .icon_as_template(false)
                 .on_tray_icon_event(move |tray, event| {
                     if let TrayIconEvent::Click {
@@ -660,16 +648,8 @@ pub fn run() {
                 match ensure_token(&s).await {
                     Ok(token) => match usage::fetch_usage(&s.client, &token).await {
                         Ok(data) => {
-                            // Regenerate tray icon
-                            if let Some(bucket) = &data.five_hour {
-                                let new_icon = icon::generate_usage_icon(bucket.utilisation);
-                                if let Some(tray) = h.tray_by_id("cspy-tray") {
-                                    let _ = tray.set_icon(Some(new_icon));
-                                }
-                            }
-
+                            update_tray_icon(&h, &data);
                             update_tray_tooltip(&h, &data);
-                            update_tray_title(&h, &data);
                             *s.cached.write().await = Some(data.clone());
                             let _ = h.emit("usage-updated", &data);
                         }

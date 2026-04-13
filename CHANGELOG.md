@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.6.0](https://github.com/NRTFM-Ltd/CSpy/compare/v0.5.0...v0.6.0) (2026-04-13)
+
+
+### Features
+
+* add heartbeat AppState fields and command ([a326963](https://github.com/NRTFM-Ltd/CSpy/commit/a3269631e51d666040c999750a452694c8103141))
+* add is_frontend_healthy with TDD ([86dd698](https://github.com/NRTFM-Ltd/CSpy/commit/86dd698dbf5ac8c06da327146d72b1ffdd4bf5d6))
+* add watchdog task and dev Vite recovery ([b4bcb9f](https://github.com/NRTFM-Ltd/CSpy/commit/b4bcb9f3160f8fac1fd33484aaf2bbec65ef5308))
+* emit heartbeat from frontend every 30s ([3291d0e](https://github.com/NRTFM-Ltd/CSpy/commit/3291d0e60f668416fd18fecad30ab39e47579ba7))
+* **icon:** add 5x7 bitmap font glyphs for countdown text ([b30d2cd](https://github.com/NRTFM-Ltd/CSpy/commit/b30d2cd29be8a2bc6654134466a51bf5fb6eb715))
+* **icon:** add text rendering into RGBA buffer ([00bf6c3](https://github.com/NRTFM-Ltd/CSpy/commit/00bf6c3f44f5a06d36e7b78d794b9b9fd8664d7a))
+* **icon:** add text width measurement for countdown rendering ([d1aebdf](https://github.com/NRTFM-Ltd/CSpy/commit/d1aebdf1d61917e1e51c4112a985a543778388fd))
+* **icon:** increase height to 40px and use 3x glyph scale for countdown ([746f47d](https://github.com/NRTFM-Ltd/CSpy/commit/746f47dd4ada24277f91be6cde267a7df8df0250))
+* **icon:** update generate_usage_icon for text icons ([c0b2f23](https://github.com/NRTFM-Ltd/CSpy/commit/c0b2f23d1d5f438011e7a5967ef7c84a3f5a1454))
+* **icon:** variable-width icon rendering with countdown text ([fcdc0f3](https://github.com/NRTFM-Ltd/CSpy/commit/fcdc0f3b176e250aba8c2e07c47182e6415f152d))
+* replace set_title with icon-rendered countdown text ([a2b7618](https://github.com/NRTFM-Ltd/CSpy/commit/a2b7618ecb9aa11bc34a6fdd96eda84b117be1aa))
+* wire watchdog and add exit handler for Vite cleanup ([7e7f5a2](https://github.com/NRTFM-Ltd/CSpy/commit/7e7f5a23482cfa12f78c2b0ee8ef185e5401fe24))
+
+
+### Bug Fixes
+
+* **icon:** render countdown glyphs upright ([e9b34d8](https://github.com/NRTFM-Ltd/CSpy/commit/e9b34d84bf7fa1db717eaf57c46424b344590cf6))
+* prevent stale frontend builds causing WSOD ([#13](https://github.com/NRTFM-Ltd/CSpy/issues/13)) ([04576c1](https://github.com/NRTFM-Ltd/CSpy/commit/04576c189b9dc7af0b668d7a21290993930d1895))
+* prevent watchdog from blocking Tokio executor ([f208c51](https://github.com/NRTFM-Ltd/CSpy/commit/f208c51a8c60036b9d9dd5b9f1f0b778ae5da86d))
+* startup_time OnceLock and heartbeat return type ([cc5e6aa](https://github.com/NRTFM-Ltd/CSpy/commit/cc5e6aa776796e1033a917af04dae77aa333ce4b))
+
 ## [0.5.0](https://github.com/NRTFM-Ltd/CSpy/compare/v0.4.0...v0.5.0) (2026-04-08)
 
 

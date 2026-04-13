@@ -112,8 +112,7 @@ fn render_text_into(
                         for dy in 0..3u32 {
                             for dx in 0..3u32 {
                                 let px = cursor_x + glyph_col * 3 + dx;
-                                // Flip vertical: row 0 = bottom of glyph, row 6 = top
-                                let py = y_offset + (6 - glyph_row) * 3 + dy;
+                                let py = y_offset + glyph_row * 3 + dy;
                                 if px < buf_width && py < ICON_HEIGHT {
                                     let idx = ((py * buf_width + px) * 4) as usize;
                                     rgba[idx] = colour.0;
